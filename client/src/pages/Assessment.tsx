@@ -15,6 +15,11 @@ type Question = {
   topic: string;
 };
 
+type AssessmentResponse = {
+  questions: Question[];
+  timeLimitSeconds: number;
+};
+
 export function AssessmentPage() {
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.accessToken);
@@ -26,12 +31,13 @@ export function AssessmentPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [message, setMessage] = useState("");
   const [remainingSec, setRemainingSec] = useState(20 * 60);
+  const [totalTimeSec, setTotalTimeSec] = useState(20 * 60);
 
   useEffect(() => {
     if (!token) {
       return;
     }
-    apiRequest<{ questions: Question[] }>("/assessment/generate", {
+    apiRequest<AssessmentResponse>("/assessment/generate", {
       method: "POST",
       authToken: token,
       body: JSON.stringify({ topics: user?.strongConcepts ?? [] }),
@@ -39,6 +45,9 @@ export function AssessmentPage() {
       .then((data) => {
         setQuestions(data.questions);
         setAnswers(new Array(data.questions.length).fill(""));
+        const timeLimitSeconds = data.timeLimitSeconds ?? 20 * 60;
+        setRemainingSec(timeLimitSeconds);
+        setTotalTimeSec(timeLimitSeconds);
       })
       .catch((error) => setMessage(error instanceof Error ? error.message : "Failed to load assessment."))
       .finally(() => setIsLoaded(true));
@@ -91,7 +100,7 @@ export function AssessmentPage() {
               <p className="text-sm text-slate-300">
                 Question {current + 1} / {questions.length}
               </p>
-              <ProgressRing total={20 * 60} remaining={remainingSec} />
+              <ProgressRing total={totalTimeSec} remaining={remainingSec} />
             </div>
             <h3 className="text-xl text-slate-50">{currentQuestion.question}</h3>
             <div className="grid gap-2">

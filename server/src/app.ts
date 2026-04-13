@@ -20,7 +20,7 @@ app.use(
     credentials: true,
   }),
 );
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(morgan("dev"));
 app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());

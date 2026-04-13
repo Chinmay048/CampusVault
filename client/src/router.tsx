@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AnalyzerPage } from "./pages/Analyzer";
 import { AssessmentPage } from "./pages/Assessment";
 import { CompaniesPage } from "./pages/Companies";
@@ -23,5 +23,6 @@ export const appRouter = createBrowserRouter([
   { path: "/mentorship", element: <MentorshipPage /> },
   { path: "/analyzer", element: <AnalyzerPage /> },
   { path: "/profile", element: <ProfilePage /> },
+  { path: "*", element: <Navigate to="/" replace /> },
 ]);
 

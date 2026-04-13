@@ -109,7 +109,7 @@ export function CompaniesPage() {
               <GlassCard key={company.id}>
                 <p className="text-lg text-slate-100">{company.name}</p>
                 <p className="text-sm text-slate-300">
-                  Package: {company.package ?? "TBD"} · Min GPA: {company.minGpa ?? "Any"}
+                  Package: {company.package ?? "TBD"} · Min GPA: {company.minGpa?.toFixed(1) ?? "Any"}
                 </p>
                 <p className="mt-2 text-xs text-slate-400">{company.roles.join(" · ")}</p>
                 <div className="mt-3">

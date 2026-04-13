@@ -7,10 +7,10 @@ import OpenAI from "openai";
 import { env } from "../config/env.js";
 
 const createQuestionSchema = z.object({
-  companyId: z.string().min(1),
-  content: z.string().min(10),
-  round: z.string().min(2),
-  year: z.number().int().min(2000).max(2100),
+  companyId: z.string().min(1, "Please select a company"),
+  content: z.string().min(5, "Question must be at least 5 characters"),
+  round: z.string().min(1, "Round is required"),
+  year: z.number().int().min(2000, "Valid year is required").max(2100),
 });
 
 const createAnswerSchema = z.object({
@@ -45,7 +45,7 @@ questionsRouter.post("/", requireAuth, async (req, res) => {
   }
   const parsed = createQuestionSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ message: "Invalid question payload." });
+    return res.status(400).json({ message: parsed.error.issues.map((e: any) => e.message).join(", ") });
   }
 
   const question = await prisma.question.create({
@@ -199,13 +199,28 @@ questionsRouter.post("/:id/unlock", requireAuth, async (req, res) => {
     }
     
     // Generate AI answer dynamically to act as the "unlocked premium content"
-    const client = new OpenAI({
-      apiKey: env.OPENAI_API_KEY,
-      baseURL: env.OPENAI_API_KEY?.startsWith("AIza") ? "https://generativelanguage.googleapis.com/v1beta/openai/" : undefined,
-    });
+    const isGemini = env.OPENAI_API_KEY?.startsWith("AIza");
+    const useOllama = !env.OPENAI_API_KEY || env.OPENAI_API_KEY.includes("dummy");
+
+    let client: OpenAI;
+    let model: string;
+
+    if (!useOllama) {
+      client = new OpenAI({
+        apiKey: env.OPENAI_API_KEY!,
+        ...(isGemini && { baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" })
+      });
+      model = isGemini ? "gemini-2.5-flash" : "gpt-4o-mini";
+    } else {
+      client = new OpenAI({
+        apiKey: "ollama",
+        baseURL: env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1"
+      });
+      model = env.OLLAMA_MODEL ?? "llama3";
+    }
     
     const completion = await client.chat.completions.create({
-      model: "gemini-2.5-flash",
+      model: model,
       messages: [
         { role: "system", content: "You are a senior tech interviewer at top tech companies. Provide a comprehensive, detailed, and stellar answer or breakdown (with code examples if technical) for the provided interview question." },
         { role: "user", content: `Company: ${question.company.name}\nQuestion: ${question.content}` }
@@ -241,3 +256,81 @@ questionsRouter.post("/:id/unlock", requireAuth, async (req, res) => {
   }
 });
 
+
+
+questionsRouter.post("/:id/verify-answer", requireAuth, async (req, res) => {
+  const qId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const { answer } = req.body;
+  const auth = (req as any).auth;
+  if (!auth) return res.status(401).json({ message: "Unauthorized" });
+
+  const question = await prisma.question.findUnique({ where: { id: qId } });
+  if (!question) return res.status(404).json({ message: "Question not found" });
+
+  try {
+    const isGemini = env.OPENAI_API_KEY && env.OPENAI_API_KEY.startsWith("AIza");
+    const useOllama = !env.OPENAI_API_KEY || env.OPENAI_API_KEY.includes("dummy");
+    let client: OpenAI;
+    let modelName: string;
+
+    if (!useOllama) {
+      client = new OpenAI({
+        apiKey: env.OPENAI_API_KEY!,
+        ...(isGemini && { baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" })
+      });
+      modelName = isGemini ? "gemini-2.5-flash" : "gpt-4o-mini";
+    } else {
+      client = new OpenAI({ 
+        apiKey: "ollama",
+        baseURL: env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1"
+      });
+      modelName = env.OLLAMA_MODEL ?? "llama3";
+    }
+
+    const promptParams = {
+      question: question.content,
+      type: question.type,
+      correctAnswer: question.correctAnswer,
+      expectedOutput: question.expectedOutput,
+      userAnswer: answer
+    };
+
+    const completion = await client.chat.completions.create({
+      model: modelName,
+      messages: [
+        {
+          role: "system",
+          content: 'You are an interviewer verifying an answer. Given the question details and user answer, evaluate correctness. Return ONLY valid JSON with no markdown formatting: { "isCorrect": boolean, "explanation": "reasoning" }.'
+        },
+        {
+          role: "user",
+          content: JSON.stringify(promptParams)
+        }
+      ]
+    });
+    
+    const raw = completion.choices[0]?.message?.content;
+    let result = { isCorrect: false, explanation: "Failed to parse AI response." }; 
+    if (raw) {
+        try {
+          const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+          const p = JSON.parse(cleaned);
+          if (typeof p.isCorrect === 'boolean') result.isCorrect = p.isCorrect;
+          if (p.explanation) result.explanation = p.explanation;
+        } catch (e) {
+          result.explanation = "AI provided a non-JSON formatted response: " + raw.substring(0, 100) + "...";
+        }
+    }
+
+    if (result.isCorrect) {
+      await prisma.$transaction(async (tx) => {
+          await addCredits(tx, auth.id, 5, "Correct verified answer for question " + qId);        
+      });
+    }
+
+    return res.json(result);
+  } catch (error) {
+    console.error("Verify error:", error);
+    return res.status(500).json({ message: "Verification failed" });
+  }
+});

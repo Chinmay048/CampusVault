@@ -39,7 +39,7 @@ export function AnalyzerPage() {
       if (resumeFile) formData.append("resumePdf", resumeFile);
 
       // Using raw fetch since we are sending FormData instead of JSON
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3001/api"}/analyzer/run`, {
+      const res = await fetch(`/api/analyzer/run`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -95,10 +95,12 @@ export function AnalyzerPage() {
             </div>
           </div>
           <div>
-            <GlowInput
+            <textarea
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
               placeholder="Paste resume text if you prefer..."
+              rows={6}
+              className="glow-ring w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 resize-none"
             />
           </div>
           <GlowButton type="button" onClick={runAnalysis} className={loading ? "opacity-50" : ""}>

@@ -29,7 +29,7 @@ assessmentRouter.post("/generate", requireAuth, async (req, res) => {
 
   try {
     const questions = await generateQuestions(parsed.data.topics);
-    return res.json({ questions });
+    return res.json({ questions, timeLimitSeconds: 20 * 60 });
   } catch (error) {
     return res.status(503).json({
       message: error instanceof Error ? error.message : "Unable to generate questions.",

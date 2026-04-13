@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "../lib/api";
 import { GlassCard } from "../components/ui/GlassCard";
 import { PageWrapper } from "../components/layout/PageWrapper";
-import { useAuthStore } from "../store/auth";
+import { useAuthStore, type AuthUser } from "../store/auth";
 import { TierBadge } from "../components/ui/TierBadge";
 import { CreditChip } from "../components/ui/CreditChip";
 import { PageTransition } from "../components/layout/PageTransition";
@@ -43,16 +43,7 @@ export function DashboardPage() {
     if (!token) {
       return;
     }
-    apiRequest<{
-      id: string;
-      email: string;
-      name: string;
-      credits: number;
-      tier: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "PLACEMENT_READY";
-      branch?: string | null;
-      gpa?: number | null;
-      strongConcepts?: string[];
-    }>("/auth/me", {
+    apiRequest<AuthUser>("/auth/me", {
       authToken: token,
     })
       .then((me) => setUser(me))
@@ -74,7 +65,7 @@ export function DashboardPage() {
       .then(setEligibleCompanies)
       .catch((error) => setMessage(error instanceof Error ? error.message : "Failed to fetch companies."));
 
-    const creditRequestOptions: any = {};
+    const creditRequestOptions: RequestInit & { headers?: Record<string, string> } = {};
     if (token) {
       creditRequestOptions.authToken = token;
     }
@@ -125,7 +116,7 @@ export function DashboardPage() {
           <div className="relative ml-2 border-l-2 border-indigo-500/20 pl-6 space-y-6">
             {getRoadmapForTier(user?.tier).map((step, index) => (
               <div key={index} className="relative">
-                <span className="absolute -left-[35px] top-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#050508] border border-indigo-500/50 font-bold text-indigo-400 text-xs shadow-[0_0_10px_rgba(99,102,241,0.3)]">
+                  <span className="absolute -left-8.75 top-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#050508] border border-indigo-500/50 font-bold text-indigo-400 text-xs shadow-[0_0_10px_rgba(99,102,241,0.3)]">
                   {index + 1}
                 </span>
                 <p className="text-sm font-medium text-slate-200 mt-1">{step}</p>       
@@ -139,7 +130,7 @@ export function DashboardPage() {
           <div className="relative ml-2 border-l-2 border-slate-700/50 pl-6 space-y-6">
             {creditHistory.slice(0, 5).map((txn) => (
               <div key={txn.id} className="relative">
-                <span className={`absolute -left-[31px] top-2 h-3 w-3 shrink-0 rounded-full ${txn.amount > 0 ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" : "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]"}`} />
+                  <span className={`absolute -left-7.75 top-2 h-3 w-3 shrink-0 rounded-full ${txn.amount > 0 ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" : "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]"}`} />
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm text-slate-200">{txn.reason}</p>

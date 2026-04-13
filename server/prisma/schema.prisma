@@ -34,9 +34,12 @@ model User {
   certifications Certification[]
   assessments    Assessment[]
   answers        Answer[]
+  postedQuestions Question[]        @relation("postedBy")
   mentorSessions MentorSession[]    @relation("mentee")
   hostedSessions MentorSession[]    @relation("mentor")
   creditTxns     CreditTransaction[]
+  companyUnlocks CompanyUnlock[]
+  answerUnlocks  AnswerUnlock[]
   resume         Resume?
 }
 
@@ -93,6 +96,19 @@ model Company {
   package          String?
   description      String?
   questions        Question[]
+  unlocks          CompanyUnlock[]
+}
+
+model CompanyUnlock {
+  id         String   @id @default(cuid())
+  companyId  String
+  userId     String
+  cost       Int
+  createdAt  DateTime @default(now())
+  company    Company  @relation(fields: [companyId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([companyId, userId])
 }
 
 model Question {
@@ -100,12 +116,18 @@ model Question {
   companyId       String
   postedById      String
   content         String
+  type            String   @default("DISCUSSION") // DISCUSSION, MCQ, CODING    
+  options         String[] @default([]) // Array of options for MCQ
+  correctAnswer   String?  // The correct option label or value
+  testCases       Json?    // Test cases for coding questions
+  expectedOutput  String?  // Expected output structure
   round           String
   year            Int
   isPremium       Boolean  @default(false)
   creditsToUnlock Int      @default(0)
   answers         Answer[]
   company         Company  @relation(fields: [companyId], references: [id])
+  postedBy        User     @relation("postedBy", fields: [postedById], references: [id])
 }
 
 model Answer {
@@ -129,6 +151,7 @@ model AnswerUnlock {
   cost      Int
   createdAt DateTime @default(now())
   answer    Answer   @relation(fields: [answerId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([answerId, userId])
 }

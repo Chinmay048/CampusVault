@@ -21,18 +21,29 @@ export function resolveTier(score: number) {
 }
 
 export async function generateQuestions(topics: string[]) {
-  if (!env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not configured.");
+  const isGemini = env.OPENAI_API_KEY?.startsWith("AIza");
+  const useOllama = !env.OPENAI_API_KEY || env.OPENAI_API_KEY.includes("dummy");
+
+  let client: OpenAI;
+  let modelName: string;
+
+  if (!useOllama) {
+    client = new OpenAI({ 
+      apiKey: env.OPENAI_API_KEY!,
+      ...(isGemini && { baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" })
+    });
+    modelName = isGemini ? "gemini-2.5-flash" : "gpt-4o-mini";
+  } else {
+    client = new OpenAI({
+      apiKey: "ollama",
+      baseURL: env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1"
+    });
+    modelName = env.OLLAMA_MODEL ?? "llama3";
   }
 
-  const client = new OpenAI({ 
-    apiKey: env.OPENAI_API_KEY,
-    baseURL: env.OPENAI_API_KEY.startsWith("AIza") ? "https://generativelanguage.googleapis.com/v1beta/openai/" : undefined,
-  });
-  
   const promptTopics = topics.length ? topics.join(", ") : "DSA, DBMS, OS, CN"; 
   const completion = await client.chat.completions.create({
-    model: env.OPENAI_API_KEY.startsWith("AIza") ? "gemini-2.5-flash" : "gpt-4o-mini",
+    model: modelName,
     temperature: 0.4,
     messages: [
       {

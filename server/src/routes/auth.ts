@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
-import { addCredits } from "../services/credits.js";
+
 import {
   hashPassword,
   signAccessToken,
@@ -15,15 +15,15 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   name: z.string().min(2),
-  phone: z.string().optional(),
-  college: z.string().optional(),
-  course: z.string().optional(),
-  branch: z.string().optional(),
-  year: z.number().int().min(1).max(5).optional(),
-  gpa: z.number().min(0).max(10).optional(),
-  githubUrl: z.string().url().optional(),
-  linkedinUrl: z.string().url().optional(),
-  leetcodeUrl: z.string().url().optional(),
+  phone: z.string().optional().or(z.literal("")),
+  college: z.string().optional().or(z.literal("")),
+  course: z.string().optional().or(z.literal("")),
+  branch: z.string().optional().or(z.literal("")),
+  year: z.number().int().min(0).max(5).optional().nullable().or(z.string().transform(() => undefined)).or(z.nan().transform(() => undefined)),
+  gpa: z.number().min(0).max(10).optional().nullable().or(z.string().transform(() => undefined)).or(z.nan().transform(() => undefined)),
+  githubUrl: z.string().url().optional().or(z.literal("")),
+  linkedinUrl: z.string().url().optional().or(z.literal("")),
+  leetcodeUrl: z.string().url().optional().or(z.literal("")),
   targetRoles: z.array(z.string()).default([]),
   languages: z.array(z.string()).default([]),
   strongConcepts: z.array(z.string()).default([]),

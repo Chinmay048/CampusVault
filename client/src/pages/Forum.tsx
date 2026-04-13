@@ -25,14 +25,23 @@ export function ForumPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [message, setMessage] = useState("");
 
+  const [companies, setCompanies] = useState<{id: string, name: string}[]>([]);
+
   const loadQuestions = () => {
     apiRequest<Question[]>("/questions")
       .then(setQuestions)
       .catch((error) => setMessage(error instanceof Error ? error.message : "Failed to load questions."));
   };
 
+  const loadCompanies = () => {
+    apiRequest<{id: string, name: string}[]>("/companies")
+      .then(setCompanies)
+      .catch(() => {});
+  };
+
   useEffect(() => {
     loadQuestions();
+    loadCompanies();
   }, []);
 
   const submitQuestion = async () => {
@@ -65,10 +74,19 @@ export function ForumPage() {
       <div className="space-y-4">
         <GlassCard className="space-y-3">
           <p className="text-slate-100">Post a question</p>
-          <GlowInput value={companyId} onChange={(e) => setCompanyId(e.target.value)} placeholder="Company ID" />
+          <select
+            value={companyId}
+            onChange={(e) => setCompanyId(e.target.value)}
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-100 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 backdrop-blur-sm"
+          >
+            <option value="" disabled className="bg-slate-900">Select Company</option>
+            {companies.map(c => (
+              <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>
+            ))}
+          </select>
           <GlowInput value={round} onChange={(e) => setRound(e.target.value)} placeholder="Round" />
-          <GlowInput value={String(year)} onChange={(e) => setYear(Number(e.target.value))} type="number" placeholder="Year" />
-          <GlowInput value={content} onChange={(e) => setContent(e.target.value)} placeholder="Question content" />
+            <GlowInput value={year || ""} onChange={(e) => setYear(parseInt(e.target.value, 10) || 0)} type="number" placeholder="Year" />
+            <GlowInput value={content} onChange={(e) => setContent(e.target.value)} placeholder="Question content (min 5 characters)" />
           <GlowButton type="button" onClick={submitQuestion}>
             Post Question
           </GlowButton>

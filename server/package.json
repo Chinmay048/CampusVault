@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "prisma:generate": "dotenv -e ..\\.env -- prisma generate",
     "prisma:migrate": "dotenv -e ..\\.env -- prisma migrate dev --name init",
-    "prisma:seed": "dotenv -e ..\\.env -- tsx prisma/seed.ts"
+    "prisma:seed": "dotenv -e ..\\.env -- tsx prisma/seed.ts",
+    "prisma:studio": "dotenv -e ..\\.env -- prisma studio --port 5555"
   },
   "keywords": [],
   "author": "",
@@ -28,6 +29,7 @@
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
     "openai": "^6.34.0",
+    "pdf-parse": "^2.4.5",
     "prisma": "^6.16.2",
     "socket.io": "^4.8.3",
     "zod": "^4.3.6"
@@ -41,6 +43,7 @@
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.1.0",
     "@types/node": "^25.6.0",
+    "@types/pdf-parse": "^1.1.5",
     "dotenv-cli": "^11.0.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"

@@ -2,10 +2,14 @@ import { Router } from "express";
 import { z } from "zod";
 import OpenAI from "openai";
 import multer from "multer";
+import { createRequire } from "module";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";        
 import { prisma } from "../lib/prisma.js";
 import { spendCredits } from "../services/credits.js";
 import { env } from "../config/env.js";
+
+const require = createRequire(import.meta.url);
+const pdfParse = require("pdf-parse");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -17,11 +21,21 @@ analyzerRouter.post("/run", requireAuth, upload.single("resumePdf"), async (req,
     return res.status(401).json({ message: "Unauthorized." });
   }
   
-  // Future Implementation: Actually parse the PDF Buffer via external service or Cloudinary upload
-  // Right now, we fallback to resumeText if provided, else just dummy string
-  const resumeText = req.body.resumeText || (req.file ? "Parsed PDF text mock" : "");
-  if (resumeText.length < 10 && !req.file) {
-    return res.status(400).json({ message: "Provide either a resume PDF or pasted text (min 10 chars)." });
+  let resumeText = req.body.resumeText || "";
+  
+  if (req.file && req.file.buffer) {
+    try {
+      const parser = new pdfParse.PDFParse(new Uint8Array(req.file.buffer));
+      const pdfData = await parser.getText();
+      resumeText = pdfData.text || "";
+    } catch (err) {
+      console.error("PDF Parsing Error:", err);
+      return res.status(400).json({ message: "Could not parse the provided PDF file." });
+    }
+  }
+
+  if (resumeText.length < 10) {
+    return res.status(400).json({ message: "Provide either a valid resume PDF or pasted text (min 10 chars)." });
   }
 
   try {
@@ -35,16 +49,9 @@ analyzerRouter.post("/run", requireAuth, upload.single("resumePdf"), async (req,
       }
     });
 
-    if (!env.OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured.");
-    }
-
-    const isGemini = env.OPENAI_API_KEY.startsWith("AIza");
-    const client = new OpenAI({ 
-      apiKey: env.OPENAI_API_KEY,
-      ...(isGemini && { baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" })
-    });
-
+    const isGemini = env.OPENAI_API_KEY && env.OPENAI_API_KEY.startsWith("AIza");
+    const useOllama = !env.OPENAI_API_KEY || env.OPENAI_API_KEY.includes("dummy");
+    
     const profileData = {
       resume: resumeText,
       githubUrl: user?.githubUrl,
@@ -55,9 +62,25 @@ analyzerRouter.post("/run", requireAuth, upload.single("resumePdf"), async (req,
       gpa: user?.gpa,
     };
 
+    let client: OpenAI;
+    let modelName: string;
+
+    if (!useOllama) {
+      client = new OpenAI({ 
+        apiKey: env.OPENAI_API_KEY!,
+        ...(isGemini && { baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" })
+      });
+      modelName = isGemini ? "gemini-2.5-flash" : "gpt-4o-mini";
+    } else {
+      client = new OpenAI({ 
+        apiKey: "ollama",
+        baseURL: env.OLLAMA_BASE_URL ?? "http://localhost:11434/v1"
+      });
+      modelName = env.OLLAMA_MODEL ?? "llama3";
+    }
+
     const completion = await client.chat.completions.create({
-      model: isGemini ? "gemini-2.5-flash" : "gpt-4o-mini",
-      response_format: { type: "json_object" },
+      model: modelName,
       temperature: 0.3,
       messages: [
         {
@@ -73,11 +96,21 @@ analyzerRouter.post("/run", requireAuth, upload.single("resumePdf"), async (req,
 
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
-      throw new Error("OpenAI returned an empty response.");
+      throw new Error("AI returned an empty response.");
     }
 
-    const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
-    const result = JSON.parse(cleaned);
+    const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+    let result;
+    try {
+      result = JSON.parse(cleaned);
+    } catch (e) {
+      console.error("Failed to parse analyzer response:", raw);
+      result = {
+        profileScore: { projects: 0, skills: 0, dsa: 0, communication: 0, experience: 0 },
+        salaryRange: "Could not analyze",
+        gaps: ["AI model did not return a valid structured response.", "Consider checking if your model supports JSON."]
+      };
+    }
 
     await prisma.resume.upsert({
       where: { userId: auth.id },

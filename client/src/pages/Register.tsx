@@ -20,8 +20,8 @@ const registerSchema = z.object({
   college: z.string().min(2),
   course: z.string().min(2),
   branch: z.string().min(2),
-  year: z.number().int().min(1).max(5),
-  gpa: z.number().min(0).max(10),
+  year: z.union([z.number().int().min(1).max(5), z.nan().transform(() => undefined), z.null()]).optional(),
+  gpa: z.union([z.number().min(0).max(10), z.nan().transform(() => undefined), z.null()]).optional(),
   targetRoles: z.array(z.string()).min(1),
   languages: z.array(z.string()).min(1),
   strongConcepts: z.array(z.string()).min(1),
@@ -127,9 +127,44 @@ export function RegisterPage() {
 
           {step === 2 ? (
             <div className="grid gap-3 md:grid-cols-2">
-              <GlowInput {...register("course")} placeholder="Course" />
-              <GlowInput {...register("branch")} placeholder="Branch" />
-              <GlowInput {...register("year", { valueAsNumber: true })} type="number" placeholder="Year" />
+              <select
+                {...register("course")}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 backdrop-blur-sm transition-all"
+              >
+                <option value="" disabled className="text-slate-500 bg-slate-900">Select Degree/Course</option>
+                <option value="B.Tech" className="bg-slate-900">B.Tech</option>
+                <option value="B.E." className="bg-slate-900">B.E.</option>
+                <option value="M.Tech" className="bg-slate-900">M.Tech</option>
+                <option value="BCA" className="bg-slate-900">BCA</option>
+                <option value="MCA" className="bg-slate-900">MCA</option>
+                <option value="B.Sc" className="bg-slate-900">B.Sc</option>
+              </select>
+
+              <select
+                {...register("branch")}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 backdrop-blur-sm transition-all"
+              >
+                <option value="" disabled className="text-slate-500 bg-slate-900">Select Branch</option>
+                <option value="CSE" className="bg-slate-900">Computer Science</option>
+                <option value="IT" className="bg-slate-900">Information Technology</option>
+                <option value="ECE" className="bg-slate-900">Electronics & Communication</option>
+                <option value="EEE" className="bg-slate-900">Electrical & Electronics</option>
+                <option value="Mechanical" className="bg-slate-900">Mechanical</option>
+                <option value="Civil" className="bg-slate-900">Civil</option>
+              </select>
+
+              <select
+                {...register("year", { valueAsNumber: true })}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-slate-100 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 backdrop-blur-sm transition-all"
+              >
+                <option value="0" disabled className="text-slate-500 bg-slate-900">Current Year</option>
+                <option value="1" className="bg-slate-900">1st Year</option>
+                <option value="2" className="bg-slate-900">2nd Year</option>
+                <option value="3" className="bg-slate-900">3rd Year</option>
+                <option value="4" className="bg-slate-900">4th Year</option>
+                <option value="5" className="bg-slate-900">5th Year (Dual)</option>
+              </select>
+
               <GlowInput
                 {...register("gpa", { valueAsNumber: true })}
                 type="number"
@@ -209,11 +244,22 @@ function SelectionGroup({
   values: string[];
   onToggle: (value: string) => void;
 }) {
+  const [customValue, setCustomValue] = useState("");
+
+  const handleAddCustom = () => {
+    if (customValue.trim() && !options.includes(customValue) && !values.includes(customValue.trim())) {
+      onToggle(customValue.trim());
+      setCustomValue("");
+    }
+  };
+
+  const displayOptions = Array.from(new Set([...options, ...values.filter(v => !options.includes(v))]));
+
   return (
     <div>
       <p className="mb-2 text-sm font-medium text-slate-200">{title}</p>
-      <div className="flex flex-wrap gap-2">
-        {options.map((option) => {
+      <div className="flex flex-wrap gap-2 mb-2">
+        {displayOptions.map((option) => {
           const selected = values.includes(option);
           return (
             <button
@@ -230,6 +276,30 @@ function SelectionGroup({
             </button>
           );
         })}
+      </div>
+      <div className="flex items-center gap-2 mt-2">
+        <input
+          type="text"
+          value={customValue}
+          onChange={(e) => setCustomValue(e.target.value)}
+          placeholder="Other (specify)"
+          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-100 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 max-w-37.5 transition-all"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAddCustom();
+            }
+          }}
+        />
+        {customValue.trim() && (
+          <button
+            type="button"
+            onClick={handleAddCustom}
+            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+          >
+            Add
+          </button>
+        )}
       </div>
     </div>
   );

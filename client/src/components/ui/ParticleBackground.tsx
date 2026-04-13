@@ -18,6 +18,7 @@ const ParticleBackground = () => {
         let particles: Particle[] = [];
         const mouse = { x: null as number | null, y: null as number | null, radius: 200 };
 
+        // eslint-disable-next-line react-hooks/unsupported-syntax
         class Particle {
             x: number;
             y: number;
@@ -54,9 +55,9 @@ const ParticleBackground = () => {
 
                 // Mouse collision detection
                 if (mouse.x !== null && mouse.y !== null) {
-                    let dx = mouse.x - this.x;
-                    let dy = mouse.y - this.y;
-                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
                     if (distance < mouse.radius + this.size) {
                         const forceDirectionX = dx / distance;
                         const forceDirectionY = dy / distance;
@@ -75,14 +76,14 @@ const ParticleBackground = () => {
         function init() {
             if (!canvas) return;
             particles = [];
-            let numberOfParticles = (canvas.height * canvas.width) / 9000;
+            const numberOfParticles = (canvas.height * canvas.width) / 9000;
             for (let i = 0; i < numberOfParticles; i++) {
-                let size = (Math.random() * 2) + 1;
-                let x = (Math.random() * ((innerWidth - size * 2) - (size * 2)) + size * 2);
-                let y = (Math.random() * ((innerHeight - size * 2) - (size * 2)) + size * 2);
-                let directionX = (Math.random() * 0.4) - 0.2;
-                let directionY = (Math.random() * 0.4) - 0.2;
-                let color = 'rgba(100, 150, 255, 0.8)'; // Dark blue
+                const size = (Math.random() * 2) + 1;
+                const x = (Math.random() * ((innerWidth - size * 2) - (size * 2)) + size * 2);
+                const y = (Math.random() * ((innerHeight - size * 2) - (size * 2)) + size * 2);
+                const directionX = (Math.random() * 0.4) - 0.2;
+                const directionY = (Math.random() * 0.4) - 0.2;
+                const color = 'rgba(100, 150, 255, 0.8)'; // Dark blue
                 particles.push(new Particle(x, y, directionX, directionY, size, color));
             }
         };
@@ -101,15 +102,15 @@ const ParticleBackground = () => {
             let opacityValue = 1;
             for (let a = 0; a < particles.length; a++) {
                 for (let b = a; b < particles.length; b++) {
-                    let distance = ((particles[a].x - particles[b].x) * (particles[a].x - particles[b].x))
+                    const distance = ((particles[a].x - particles[b].x) * (particles[a].x - particles[b].x))
                         + ((particles[a].y - particles[b].y) * (particles[a].y - particles[b].y));
                     
                     if (distance < (canvas.width / 7) * (canvas.height / 7)) {
                         opacityValue = 1 - (distance / 20000);
                         
-                        let dx_mouse_a = mouse.x !== null ? particles[a].x - mouse.x : 0;
-                        let dy_mouse_a = mouse.y !== null ? particles[a].y - mouse.y : 0;
-                        let distance_mouse_a = Math.sqrt(dx_mouse_a*dx_mouse_a + dy_mouse_a*dy_mouse_a);
+                        const dx_mouse_a = mouse.x !== null ? particles[a].x - mouse.x : 0;
+                        const dy_mouse_a = mouse.y !== null ? particles[a].y - mouse.y : 0;
+                        const distance_mouse_a = Math.sqrt(dx_mouse_a*dx_mouse_a + dy_mouse_a*dy_mouse_a);
 
                         if (mouse.x !== null && distance_mouse_a < mouse.radius) {
                              ctx.strokeStyle = `rgba(255, 255, 255, ${opacityValue})`;
